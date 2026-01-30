@@ -67,5 +67,187 @@
 
 11.维度建模过程
 
+12.维度退化
 
+
+13.拉链表
+
+
+14.数据漂移：
+
+
+
+
+hive相关：
+1.特殊的函数：
+
+
+
+spark：
+1.基础概念：
+    Spark Application
+ ├── Driver（主控进程）
+ │     ├── SparkContext / SparkSession
+ │     ├── DAG Scheduler
+ │     ├── Task Scheduler
+ │     └── 与 Cluster Manager 通信
+ │
+ └── Executors（工作进程）
+       ├── 执行 Task
+       ├── 管理缓存
+       └── 读写 shuffle / 输出数据
+
+    application：一个spark只生成一个（hive却会生成多个mapreduce）
+    driver：负责程序入口，创建上下文，划分RDD并生成有向无环图，申请资源，task调度等工作。
+    executor：负责执行task，存储数据（缓存/shuffle），向driver汇报结果
+    dag:有方向不闭环的图。原始的RDD通过一系列的转换就形成了DAG，根据RDD之间的依赖关系的不同将DAG划分成不同的Stage。
+    jobs：对每个执行算子（reduce/count/collection），spark会创建一个execution和启动一个job，一个application会包含多个job
+    stage：每个job会由多个stage组成，这些stage就是实现最终rdd需要转换的步骤（生成新的rdd的步骤），每个stage可以包含多个rdd（窄依赖）
+        包含多个task，这些task是执行调度的最小单元（等价于maptask/reducetask），包含：读取的输入数据量，shuffle生成的数据量，shuffle读取的数据量
+    task：表示stage中执行单元的数量，一个Stage中的Task数量，等于该Stage最终RDD的partition数。（每个Task会顺序计算同一个partition在所有RDD上的转换过程，而不是为每个RDD的partition单独生成Task。）
+2.spark比mr快
+    (1)spark在内存中处理
+        mr：中间结果的存储，shuffle的排序和合并，都是在磁盘上完成的，面临频繁io
+        spark：通常是在内存中进行的，除了特殊情况（内存溢出，数据持久化（cache，checkpoint）
+    （2）spark的调度机制
+        mr：每一步都开启一个application，无法优化操作
+        spark：只生成一个application，会把一连串的操作优化成一个DAG图
+    （3）spark的缓存机制
+        mr：无法缓存中间结果
+        spark：将中间结果缓存起来，适合迭代型任务，提升性能
+3.spark的缓存机制
+    就是将中间结果存放在内存或者磁盘上，便于后续的使用
+    具体表现是对spark中的rdd进行持久化，rdd是spark处理数据的基本单位，一个rdd代表一段计算逻辑，缓存这段rdd的计算结果在磁盘或者内存中随时可以复用
+    rdd缓存有三种形式：
+        cache：将数据临时存储在内存中(默认就会调用persist(memory_only))
+        persist：将数据临时存储在磁盘中，程序结束就会自动删除临时文件
+        checkpoint：将数据长久保存在磁盘中
+4.宽依赖和窄依赖
+    宽依赖:涉及到数据在多个节点的分配 Shuffle
+        reduceByKey：对相同 key 的数据进行聚合，需要将相同 key 的数据汇聚到同一个分区。
+        groupByKey：将数据按 key 分组，需要将相同 key 的数据汇聚到同一个分区。
+        join：两个 RDD 的连接操作，需要将关联的 key 移动到同一个分区。
+        distinct：去重操作，需要对数据进行 shuffle。
+        repartition：重新分区，会导致数据重新分布。
+        coalesce（shuffle=true）：当 coalesce 设置 shuffle=true 时，会触发宽依赖。
+    窄依赖:数据在一个stage中并行的计算，没有跨节点的操作
+        map：对每个元素进行转换操作，不改变分区结构。
+        filter：过滤操作，只保留满足条件的元素，不改变分区结构。
+        flatMap：将每个元素映射为一个或多个元素，不改变分区结构。
+        union：合并两个 RDD 的数据，不涉及 shuffle。
+        coalesce（shuffle=false）：减少分区数量，且不触发 shuffle。
+        sample：从 RDD 中采样数据，不改变分区结构。
+5.spark的内存机制
+    堆内内存：堆内内存由JVM统一管理
+            存储内存主要存放缓存数据和广播变量
+            执行内存主要存放shuffle过程的数据
+            其他内存主要存放rdd的元数据信息
+            预留内存和其他内存作用相同。
+            Storage内存和Execution内存都有预留空间，目的是防止OOM，因为Spark堆内内存大小的记录是不准确的，需要留出保险区域。
+    堆外内存：堆外内存直接向操作系统进行内存的申请，不受JVM控制 
+            只有存储内存和执行内存 
+6.rdd
+    概念：弹性分布式数据集，是spark数据处理的基本单位，一般对一个数据集做数据处理就会把这个数据集抽象为一个rdd，对这个rdd进行转化，执行等操作
+    特点：不可变：对rdd操作会生成新的rdd，原来的不变
+         分布式：一份rdd的数据可以被切分成多个partition，对应一个task，分布在不同的节点上被executor执行
+         惰性计算：遇到转换算子不执行，遇到执行算子才生成job
+         容错性（弹性）：分区丢失，根据dag图重新计算
+    算子：
+        转换算子：转换算子用于对 RDD 进行转换操作，不会触发实际计算，而是生成一个新的 RDD（惰性执行）。
+                map:将数据逐条进行转换，可以是数据类型的转换，也可以是值的转换
+                flatMap:先进行map操作，再进行扁平化操作 filter:根据指定的规则进行筛选
+                coalesce:减少分区的个数，默认不进行shuffle
+                repartition:可以增加或者减少分区的个数，一定发生shuffle union:两个 RDD 求并集
+                zip:将两个 RDD 中的元素，以键值对的形式进行合并
+                reduceByKey:按照key对value进行聚合
+                groupByKey:按照 key对value进行分组
+                cogroup: 按照 key对value进行合并
+                join(otherDataset, [numTasks])：在类型为（K,V)和（K,W)类型的数据集上调用，返回一个（K,(V,W))对，每个key中的所有元素都在一起的数据集。
+        执行算子：触发执行
+                reduce(func)：通过函数func聚集数据集中的所有元素。Func函数接受2个参数，返回一个值。这个函数必须是关联性的，确保可以被正确的并发执行。
+                collect()：在Driver的程序中，以数组的形式，返回数据集的所有元素。这通常会在使用filter或者其它操作后，返回一个足够小的数据子集再使用，直接将整个RDD集Collect返回，很可能会让Driver程序OOM。
+                count()：返回数据集的元素个数。
+                foreach(func): 在数据集的每一个元素上，运行函数func。这通常用于更新一个累加器变量，或者和外部
+                存储系统做交互。
         
+7.spark的shuffle
+    Shuffle 是指将数据在不同的节点（Executor）之间重新分发和交换的过程 
+    Spark Shuffle 分为两种：
+        一种是基于 Hash 的 Shuffle：基于hash算法计算分区值，不需要排序；每个任务会为目标分区创建一个单独的文件
+            优点：实现简单：Hash Shuffle 的实现逻辑较为简单，直接根据 key 的哈希值分区，不需要额外的排序操作。
+            缺点：
+            文件数量多：
+            每个任务为每个分区创建一个文件，导致文件数量随着任务数和分区数的增加而急剧增长。
+            比如，假设有 100 个任务和 200 个分区，那么会产生 $100 \times 200 = 20,000$ 个文件。
+            磁盘 I/O 高：
+            每个任务会频繁地打开和关闭文件，增加了磁盘 I/O 的开销。
+            内存占用高：
+            每个分区需要维护一个缓冲区，如果分区数较多，可能会导致内存不足。
+        优化的hash shuffle： 多个mapper创建一个文件，减少小文件的产生 buffer*reduce
+        一种是基于 Sort 的 Shuffle:在 Sort Shuffle 中，数据会先按照 key 的哈希值分区，然后在每个分区内对数据进行排序；每个任务只创建一个文件，利用索引查找
+            优点：
+            减少文件数量：
+            每个任务只创建一个文件，而不是为每个分区创建单独的文件。
+            假设有 100 个任务和 200 个分区，那么只会产生 100 个文件，而不是 20,000 个文件。
+            磁盘 I/O 减少：
+            由于文件数量减少，文件的打开和关闭次数大幅降低，磁盘 I/O 开销更小。
+            支持排序：
+            数据在分区内是有序的，对于需要排序的操作（如 sortByKey），Sort Shuffle 是必需的。
+            缺点：
+            排序开销：
+            数据需要在分区内进行排序，增加了 CPU 的计算开销。
+            内存占用高：
+            为了支持排序，Sort Shuffle 在内存中需要维护排序缓冲区，可能会导致内存不足，尤其是当数据量非常大时。
+        bypassshuffle：没有排序过程，触发条件是shuffle maptask数量小于200且没有聚合类的shuffle算子
+8.spark的join
+    3种join*2种分发=6种
+    join：
+        for循环两张表，0(m*n)
+        先将两张表排序，再链接 0(m+n)
+        将两张表转化为hash table 
+    分发：shuffle or 广播
+
+python：
+1.python的集合：
+    list列表：有序，重复，可变 a=[1,2,2,3]
+        lst.append(x)        # 末尾追加
+        lst.extend(iter)     # 扩展一个可迭代对象
+        lst.insert(i, x)     # 指定位置插入
+        lst.pop()            # 删除并返回最后一个
+        lst.pop(i)           # 删除指定索引
+        lst.remove(x)        # 删除第一个 x
+        lst.clear()          # 清空
+        lst.index(x)         # 返回索引（找不到报错）
+        lst.count(x)         # 出现次数
+        lst.sort()           # 原地排序
+        lst.sort(reverse=True)
+        lst.reverse()        # 原地反转
+        x in list      # O(n)
+        len(lst)
+        max(lst)
+        min(lst)
+        sum(lst)
+    tuple元祖：有序，重复，不可变 t=(1,2,3)
+    set集合：无序，不重复，可变 s={1,2,3} 0(1)
+        s.add(x)
+        s.update(iter)       # 批量添加
+        s.remove(x)          # 不存在会报错
+        s.discard(x)         # 不存在不报错
+        s.pop()              # 随机删除一个
+        s.clear()
+        x in set       # O(1)
+        len(set)
+    dict字典:键值对 d={'a':1,'b':2} key唯一，0(1)
+        d[key] = value
+        d.update({k: v})
+        d.pop(key)
+        d.popitem()          # 删除并返回最后一对（3.7+）
+        d.clear()
+        d.get(key, default)
+           =》 key in d 0(1)
+        d.keys()
+        d.values()
+        d.items()
+            =》for k, v in d.items():
+                ...
+        len(dict)
