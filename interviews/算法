@@ -1,0 +1,414 @@
+1.快速排序
+    原理：分治思想，将数组分成较小的子数组并递归的排序这些子数组
+    步骤：
+        （1）选择最后一个元素为基准值
+        （2）遍历数组：将小于基准值的元素放在左侧，大于基准值的元素放在右侧
+        （3）递归数组：将基准值的左侧和右侧的数组分别进行步骤1，2
+    代码实现：
+        ##分区
+        def partition(arr, low ,high):
+            pivot = arr[high] #选择最后一个元素为基准值
+            i = low - 1 #i用来记录遍历数组后基准值所处的位置
+            for j in range(low, high): #j用来与基准值判断大小
+                if arr[j] <= pivot: #如果当前值小于基准值
+                    i += 1 
+                    arr[i], arr[j] = arr[j], arr[i] #交换元素，扩大小于基准值的区域
+            arr[i+1], arr[high] = arr[high], arr[i+1] #将基准值放在正确的位置
+            return i+1 #返回基准值索引，用于递归数组
+        ##递归操作
+        def quick_sort_inplace(arr, low ,high):
+            if low < high:
+                pi = partition(arr, low ,high)
+                quick_sort_inplace(arr, low ,pi-1)
+                quick_sort_inplace(arr, pi+1 ,high)
+        
+        arr = [10, 7 ,8 ,9 ,1 ,5]
+        quick_sort_inplace(arr, 0 ,len(arr)-1)
+        print(arr)
+    复杂度：
+        时间复杂度：0(nlogn)
+        最坏情况时间复杂度：0(n^2)
+        空间复杂度：0(logn)
+    优点：
+        （1）高效：时间复杂度比其他的排序算法快
+        （2）原地排序，不需要额外空间
+        （3）方便处理大规模数据
+    缺点：
+        （1）不稳定：会改变元素的相对顺序
+        （2）最坏情况效率低0(n^2)
+    leetcode：
+        （1）215:第k大小元素的问题
+        （2）912:对数组升序排序
+        （3）347:找出出现频率最高的k个元素
+
+
+2.归并排序：
+    原理：分治思想，将数组分成两个子数组，分别排序后再合并
+    步骤：
+        （1）分解：将数组分成两部分，直到每部分剩下一个元素
+        （2）合并：将两个有序的子数组组合成为一个有序的数组
+        （3）递归：重复2步骤
+    代码实现：
+        ##合并
+        def merge(left ,right):
+            result = [] #存放合并后的数据
+            i = j = 0 
+            # 比较两个子数组的元素，并排序放入结果数组
+            while i < len(left) and j < len(right):
+                if left[i] <= right[j]:
+                    result.append(left[i])
+                    i += 1
+                else:
+                    result.append(right[j])
+                    j += 1
+            #将剩余元素追加到结果数组
+            result.extend(left[i:])
+            result.extend(right[j:])
+            #返回两个数组拍组后的结果
+            return result 
+                    
+        ##递归
+        def merge_sort(arr):
+            # 如果数组长度小于1，直接返回（说明已经找到最小的数组）
+            if len(arr) <= 1:
+                return arr 
+            # 数组长度大于1，找到中间点
+            mid = len(arr) // 2
+            #递归调用归并排序
+            left_half = merge_sort(arr[:mid])
+            right_half = merge_sort(arr[mid:])
+            #合并数组
+            return merge(left_half, right_half) 
+
+        arr = [38, 27, 43, 3, 9 ,82 ,10]
+        sorted_arr = merge_sort(arr)
+    复杂度：
+        时间复杂度：0(nlogn)
+        空间复杂度：0(n)
+    优点：
+        （1）稳定
+        （2）适合大规模数据
+    缺点：
+        （1）空间复杂度：需要额外的数组储存合并结果（result）
+    leetcode：
+        （1）1:排序数组
+        （2）2:合并两个有序链表
+        （3）3.链表排序
+
+3.堆排序
+
+
+4.冒泡排序
+    原理：
+        交换；多次比较相邻元素的大小，将较大的元素逐步冒泡到数组的末尾
+    步骤：
+        （1）逐个比较相邻的元素，一轮比较后，最大的元素被移到末尾
+        （2）减小比较的范围，重复1过程直到全部有序
+    代码实现：
+        def bubble_sort(arr):
+            n = len(arr)
+            #外层控制需要冒泡多少轮
+            for i in range(n-1):
+                #内从控制每轮需要比较多少次
+                for j in range(n-1-i):#每一轮后最后一个数已经有序不需要比较
+                    #如果前一个元素比后一个元素大，交换
+                    if arr[j] > arr[j+1]:
+                        arr[j], arr[j+1] = arr[j+1], arr[j]
+            return arr 
+        arr = [5,3,8,6,2]
+        sorted_arr = bubble_sort(arr)
+    复杂度：
+        时间复杂度：最好情况0(n)
+                  最差情况0(n^2)
+        空间复杂度：0(1)
+    优点：
+        （1）稳定性好
+        （2）原地排序，不需要额外空间
+    缺点：
+        （1）效率低
+    leetcode：
+        （1）912：数组排序
+        （2）75:红白蓝数组排序
+5.选择排序
+    原理：从未排序的部分中选择最小的元素，放到以排序部分的末尾，不断重复这一过程
+    步骤：
+        （1）将数组分为排序部分和未排序部分
+        （2）在未排序部分寻找最小值
+        （3）将找到的最小元素放到已排序部分
+    代码实现：
+        def select_sort(arr):
+            n = len(arr)
+            #遍历未排序数组
+            for i in range(n):
+                #假设当前索引i处为最小值
+                min = i 
+                #在未排序部分，找到最小值
+                for j in range(i+1,n):
+                    if arr[j] < arr[min]:
+                        min = j 
+                #将最小值与当前索引值i交换
+                arr[i], arr[min] = arr[min], min[i]
+            return arr
+        nums = [64, 25, 12, 22, 11]
+        sorted_arr = select_sort(arr)
+    复杂度：
+        时间复杂度：0(n^2)
+        空间复杂度：0(1)
+    优点：
+        不依赖输入数据的初始状态，时间复杂度始终一样
+    缺点：
+        不稳定
+6.插入排序
+    原理：将数组分为已排序部分和未排序部分，每次从未排序部分取出一个元素，将其插入到已排序部分的适当位置，使得已排序部分始终保持有序。
+
+7.深度优先遍历（DFS路径枚举）
+    原理：从根结点出发，优先往深处走，再去探索其他分支。用栈来保存路径状态
+    例子：        A
+               /   \       A → B → D → E → C → F
+              B     C
+             / \     \
+            D   E     F
+    步骤：
+        1.选择起点
+        2.判断是否访问过，访问过直接结束
+        3.访问当前节点，标记
+        4，递归
+
+    代码实现：递归：靠函数调用栈 非递归：自己维护栈
+            graph = {
+            'A': ['B', 'C'],
+            'B': ['D', 'E'],
+            'C': ['F'],
+            'D': [],
+            'E': [],
+            'F': []
+        }
+        1.递归实现
+            def dfs(node，graph，visited):
+                ## 如果节点已经访问过，终止
+                if node is visited:
+                    return 
+                ## 访问当前节点
+                print(node)
+                visited.add(node)
+                ## 递归访问所有相邻节点
+                for neighbor in graph[node]:
+                    dfs(neighbor,graph,visited)
+            visited = set()
+            dfs('A',graph,visited) 
+        2.非递归
+            def dfs(start, graph):
+                visited = set()
+                stack = [start]   # 1. 用栈保存待访问节点
+
+                while stack:
+                    # 2. 弹出栈顶元素
+                    node = stack.pop()
+
+                    # 3. 如果没访问过，才处理
+                    if node not in visited:
+                        # 4. 访问当前节点
+                        print(node)
+                        visited.add(node)
+
+                        # 5. 把邻居压栈（注意顺序）--转换顺序
+                        for neighbor in reversed(graph[node]):
+                            if neighbor not in visited:
+                                stack.append(neighbor)
+            dfs('A',graph)
+    复杂度：V：节点数 E：边数
+        时间复杂度：0（V+E）
+        空间复杂度：0（V）
+    优点：
+        1.空间复杂度低
+    缺点：
+        1.如果递归深度过高，可能会爆栈
+        2.DFS不保证最短路径
+    leetcode：
+        1.104:二叉树的最后深度
+        2.226翻转二叉树
+        3.112路经总和
+8.广度优先遍历（BFS最短距离）
+    原理：从根结点开始，一层一层向外看，用队列标记（先进先出）
+    步骤：
+        1.节点入队
+        2.标记
+        3.队列非空的情况下：取出队头，找到他的邻居并放入队列中
+    代码实现：
+        from collections import deque
+        def bfs(start):
+            ## 根结点放入队列中
+            queue = deque([start])
+            ## 标记节点
+            visited = set([start])
+            while queue:
+                ## 循环取出队头
+                node = queue.popleft()
+                print(node)
+                ## 找到他的邻居，如果没访问过则放入队列中
+                for neighbor in graph[node]:
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+    复杂度：V：节点数，E：边数
+        时间复杂度：0（V+E）
+        空间复杂度：0（V）
+    优点：
+        1.保证最短路径
+        2.不会爆栈
+    缺点：
+        1.内存消耗大：如果图很宽时，可能会爆炸
+    leetcode：
+        1.102：二叉树的层序遍历
+        2.637:二叉树的层平均值
+
+9.顺序查找
+
+
+10.二分查找
+    原理：有序数组，每次取中点比较后，排除一半，不断缩小范围
+    步骤：
+        （1）初始化最左右指针（确定重点）
+        （2）找到while循环（左指针小于等于右指针）
+        （3）计算中点，与基准值比较，缩小区间
+    代码实现：
+        def binary_search(nums,target):
+            left, right = 0, len(nums)-1
+            while left <= right:
+                ## 找到中点
+                mid = (left+right)//2
+                ## 找到，返回
+                if nums[mid] == target:
+                    return mid 
+                ## 缩小区间
+                elif nums[mid] < target:
+                    left = mid + 1
+                else:
+                    right = mid - 1
+    复杂度：
+        时间复杂度：0（logn）
+        空间复杂度：0（1）
+    优点：
+        1.查找效率高
+        2.查找边界问题
+        3.稳定，不存在退化
+    缺点：
+        1.必须有序
+
+    leetcode：
+        1.704二分查找
+        2.35搜索查找位置
+        3.34在排序数组中查找元素的第一个和最后一个位置
+11.哈希查找
+    原理：（用空间换时间）利用哈希函数，将关键字直接映射到存储位置，实现0（1）的查找
+    步骤：
+        1.设置哈希函数hash(key)
+        2.将key映射到数组下标
+        3.数据存入
+        4.用hash函数查找定位
+    代码实现：
+        1.dict键值查找
+            hash_map = {}
+            hash_map["a"] = 1
+            hash_map["b"] = 2
+            print(hash_map["a"])     # 1
+            print(hash_map.get("c")) # None
+        2.set存在性查找
+            seen = set()
+            seen.add(10)
+            print(10 in seen)  # True
+    复杂度：
+        时间复杂度：插入，查找，删除 0（1）
+        空间复杂度：比数据还大
+    优点： 
+        1.查找速度快
+        2.不需要数据有序
+        3.适合判断：是否重复，是否存在
+    缺点：
+        1.空间占用大
+        2.无序
+        3.容易哈希冲突
+    哈希冲突：不同的key值相同的hash值
+        1.链地址法（常见）
+            每一个桶是一个链表/数组
+        2.开放定址法
+            冲突后向后找到空位
+    leetcode：
+        1.1两数之和
+        2.217存在重复元素
+        3.128最长连续序列
+
+12.二叉搜索树查找
+    原理：任意一个节点，左子树所有节点值小于该节点，右边所有节点大于该节点
+         中序遍历结果是有序序列，类似二分（单枝）
+            8
+          /   \
+         3     10
+        / \      \
+       1   6      14
+          / \    /
+         4   7  13
+    代码实现：
+        1.查找：0(h) 为树高
+            def search(root, target):
+                if not root:
+                    return None
+                if root.val == target:
+                    return root
+                ## 目标值与节点比较，看是向左走还是向右走，然后递归搜索
+                elif target < root.val:
+                    return search(root.left, target)
+                else:
+                    return search(root.right, target)
+        2.插入：
+            def insert(root, val):
+                if not root:
+                    return TreeNode(val)
+                ## 目标值与节点比较，确定向左边还是向右边走，递归插入函数
+                if val < root.val:
+                    root.left = insert(root.left, val)
+                elif val > root.val:
+                    root.right = insert(root.right, val)
+                return root
+        3.删除：
+            def delete(root, key):
+                if not root:
+                    return None
+
+                if key < root.val:
+                    root.left = delete(root.left, key)
+                elif key > root.val:
+                    root.right = delete(root.right, key)
+                else:
+                    if not root.left:
+                        return root.right
+                    if not root.right:
+                        return root.left
+
+                    min_node = find_min(root.right)
+                    root.val = min_node.val
+                    root.right = delete(root.right, min_node.val)
+
+                return root
+
+            def find_min(node):
+                while node.left:
+                    node = node.left
+                return node
+    时间复杂度：
+        | 操作 | 平衡 BST  | 极端退化 |
+        | --   | -------- | ---- |
+        | 查找 | O(log n) | O(n) |
+        | 插入 | O(log n) | O(n) |
+        | 删除 | O(log n) | O(n) |
+
+
+   
+
+
+13.平衡查找树（AVL/红黑树）
+ 
+
+
+
+    
