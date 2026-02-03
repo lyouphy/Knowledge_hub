@@ -1,9 +1,40 @@
 1.连续登陆问题
-2292
-
+    2292连续两年订购>=3次以上的product_id
+        t: order_id;product_id;quantity;purchase_date 
+        select product_id 
+            from(
+                    select product_id 
+                        #连续年份 → 差值相同 → 自动分一组
+                        #非连续年份就会分到不同 cn
+                            ,year - row_number() over (partition by product_id order by year) as cn 
+                    from (
+                        select  product_id 
+                                ,year(purchase_date) as year 
+                                ,count(distinct order_id) as order_cnt 
+                        from    t 
+                        group by product_id 
+                                ,year(purchase_date)  
+                        having count(distinct order_id) >= 3
+            ) t1    
+        ) t2 
+        #同一个 product,同一段连续年份;至少 2 年
+        group by product_id,cn 
+        having count(cn) >= 2
 2.中位数问题：
-569
-
+    569员工薪水中位数：每个公司的工资中位数
+        t:id;company;salary
+        select   id
+                ,company
+                ,salary 
+        from(
+            select  id 
+                    ,company 
+                    ,salary 
+                    ,row_number() over (partition by company order by salary) as rn 
+                    ,count(company) over (partition by company) as cnt 
+            from    t     
+        ) t1
+        where rn in ((cnt+1)/2,(cnt+2)/2)
 3.行转列问题：
 618.学生地理信息报告(困难);
 1179.重新格式化部门表(简单);
